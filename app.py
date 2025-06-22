@@ -1,6 +1,7 @@
 import discord
 import os
 import asyncio
+import datetime
 from dotenv import load_dotenv, dotenv_values
 
 load_dotenv()
@@ -12,6 +13,7 @@ client = discord.Client(intents=intents)
 @client.event
 async def on_ready():
   print('We have logged in as {0.user}'.format(client))
+  client.loop.create_task(verificar_lembretes(client))  # Inicia a verificação
 
 @client.event
 async def on_message(message):
@@ -21,43 +23,31 @@ async def on_message(message):
   # >> FUNÇÃO AJUDA <<
   if message.content.startswith("!ajuda"):
     Servidor = message.guild.name
-    Boas_Vindas = f"""
-Precisa de ajuda?
-Bom dia! me chamo ***Lenny Bot*** e atualmente sou um *assistente virtual* do servidor :boom: `{Servidor}` :cat: para oferecer ajuda e funções divertidas (ou chatas)
--# Criado por lioon31
-# FUNÇÕES
-
-##  ↪ Calculadora
-`r (digite a expressão)` |  Some, subtraia, multiplique, divida, aceite seu cruel destino e muito mais! O resultado deve vir logo abaixo.
-
-##  ↪ Lembrete
-`!lembrar (minutos) (assunto)` | No tempo escolhido irei te marcar te lembrando de algo específico! Pode ser sobre levar o cachorro para passear, beber água, ou lembrar você do momento em que o sol virar uma gigante vermelha. Você que escolhe!
-
-##  ↪ Inteligência Artificial (ehh, nem tanto)
-`funcionalidade depende` | Posso responder palavras-chave específicas com palavras pré-definidas! Uhh, ehh, não ache estranho que eu respondo sempre com a mesma coisa. Eu sou tímido, tá bom?! Nunca viu robô tímido?
-
----
-
-APROVEITE MINHA ASSISTÊNCIA ENQUANTO HÁ TEMPO, POIS EU SÓ FUNCIONO ENQUANTO O MALDITO DO LIOON ESTIVER ACORDADO PORQUE O VAGABUNDO NÃO TEM DINHEIRO PRA PAGAR UM SERVIDOR PRA ME MANTER ATIVO 24 HORAS!!!
-
-Isso é tudinho!"""
+    with open("BoasVindas.txt", "r", encoding="utf-8") as mensagem:
+      Boas_Vindas = mensagem.read().strip()
     
     await message.channel.send(Boas_Vindas)
-
+  
+    return
 
   # >> FUNÇÃO LEMBRETE <<
   if message.content.startswith("!lembrar "):
     try:
-     parts = message.content.split(" ", 2)
-     tempo_min = int(parts[1])
-     lembrete = parts[2]
+      parts = message.content.split(" ", 2)
+      tempo_min = int(parts[1])
+      lembrete = parts[2]
+      
+      agora = datetime.datetime.now()
+      quando = agora + datetime.timedelta(minutes=tempo_min)
 
-     await message.channel.send(f"Okay!! to voltando daqui a {tempo_min} minutos pra te lembrar sobre `{lembrete}`")
-     await asyncio.sleep(tempo_min * 60)
-     await message.channel.send(f"🚨 {message.author.mention}, tu mando eu te lembrar de `{lembrete}`, então **ACORDA** 🚨")
+      # --Salvar os lembretes no banco de dados com o canal--
+      with open("lembretes.txt", "a", encoding="utf-8") as arquivo:
+        arquivo.write(f"{message.author.id}|{message.channel.id}|{quando.isoformat()}|{lembrete}\n")
+
+      await message.channel.send(f"Okay!! to voltando daqui a {tempo_min} minutos pra te lembrar sobre `{lembrete}`")
 
     except (IndexError, ValueError):
-      await message.channel.send(f"?????? amigo não é assim que funciona. Preciso do tempo em minutos")
+      await message.channel.send(f"❌ ?????? Amigo, não é assim que funciona. Tente: `!lembrar 5 comer lanche`")
 
   # >> FUNÇÃO DE CALCULADORA <<
   if message.content.startswith("r "):
@@ -86,5 +76,36 @@ Isso é tudinho!"""
     if trigger.lower() in message_lower:
       await message.channel.send(response)
       break
+
+# --ACESSAR BANCO DE DADOS DOS LEMBRETES--
+async def verificar_lembretes(bot):
+  await bot.wait_until_ready()
+
+  while not bot.is_closed():
+    await asyncio.sleep(60)
+
+    novos_lembretes = []
+    try:
+      with open("lembretes.txt", "r", encoding="utf-8") as arquivo:
+        linhas = arquivo.readlines()
+
+      agora = datetime.datetime.now()
+
+      for linha in linhas:
+        user_id, canal_id, quando_str, texto = linha.strip().split("|")
+        quando = datetime.datetime.fromisoformat(quando_str)
+
+        if agora >= quando:
+          canal = bot.get_channel(int(canal_id))
+          if canal:
+            await canal.send(f"🚨 <@{user_id}>, tu mando eu te lembrar de `{texto}`, então **ACORDA** 🚨")
+        else:
+          novos_lembretes.append(linha)
+
+      with open("lembretes.txt", "w", encoding="utf-8") as arquivo:
+        arquivo.writelines(novos_lembretes)
+
+    except Exception as e:
+      print(f"Erro ao verificar lembretes: {e}")
 
 client.run(os.getenv('BOT_TOKEN'))
