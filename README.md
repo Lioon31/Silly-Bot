@@ -8,5 +8,5 @@ Usando do comando `r (operação)`, Lenny Bot consegue realizar soma, multiplica
 ##  ↪ Lembretes
 Lenny Bot sabe a hora perfeita para te lembrar de um compromisso! usando o commando `!lembrar (tempo em minutos) (atividade)`, Lenny Bot aguardará o tempo selecionado para te enviar uma notificação alertando-o do que você marcou.
 
-##  ↪ Roleta
-Indeciso sobre o que escolher? 
+##  ↪ E mais funções customizáveis
+O código de Lenny é aberto e fácil de ler. Lenny possui uma função de gatilho e resposta para usar entre seu grupo de amigos para se divertir.
